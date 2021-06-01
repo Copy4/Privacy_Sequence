@@ -13,24 +13,22 @@
   *
   ******************************************************************************
 '''
+import sqlite3 as lite
 
 class bdd_mc:
 
     def __init__(self):
         import sqlite3 as lite
 
-    def run(self, bdd, site):
+    def run(self, bdd, page):
 
         cur,con = self.connexion(bdd)
-        self.ajout_site(site, cur)
+        self.ajout_PAGE(page, cur)
         con.commit()
 
     def connexion(self, bdd):
-
         con = lite.connect(str(bdd))
-
         if con :
-
             print("connection ok !")
 
             con.row_factory = lite.Row
@@ -41,55 +39,59 @@ class bdd_mc:
         else :
             print("connexion echouee")
 
-    def ajout_site(self, site, cur):
+    def ajout_PAGE(self, page, cur):
 
-        fichier = open(str(site),"r")
-        text = fichier.read()
+        fichier = open(str(page),"r",encoding='utf-8')
+        texte = fichier.read()
 
-        text = text.split('\n')
-        url = text[0]
-        header = text[1]
-        site = (url, header)
-        url = (url,)
 
-        cur.execute('SELECT id_site FROM site WHERE url = (?)', (url))
-        try :
-            #vérification que le site ne soit pas déjà dans la bdd
-            id_site = cur.fetchone()['id_site']
-        except :
-            #ajout du site
-            cur.execute('INSERT INTO site(url, header) VALUES (?,?)',(site))
-            cur.execute('SELECT id_site FROM site WHERE url = (?)', (url))
-            id_site = cur.fetchone()['id_site']
+        TXT = texte.split('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
 
-            for i in range (len(text)) :
-            #ajout des nouveaux mots clés et des occurences des mots clés
-                if i > 1 :
-                    mot = ""
-                    condition = True
-                    info_mot_cle = text[i].split(';')
+        for text in TXT:
 
-                    occurence = int(info_mot_cle[1])
-                    mot = (info_mot_cle[0],)
+            text = text.split('\n')
+            url = text[1]
 
-                    cur.execute('SELECT id_mot_cle FROM mot_cle WHERE mot_cle = ?', mot)
-                    try :
-                        #vérification que le mot clé n'est pas présent dans la bdd
-                        id_mot_cle = cur.fetchone()['id_mot_cle']
-                    except :
-                        #ajout des nouveaux mots cles dans la bdd
-                        cur.execute('INSERT INTO mot_cle(mot_cle) VALUES (?)', mot)
-                        cur.execute('SELECT id_mot_cle FROM mot_cle WHERE mot_cle = ?', mot)
-                        id_mot_cle = cur.fetchone()['id_mot_cle']
+            if len(text)>3:
 
-                    infos = (id_mot_cle,id_site,occurence)
+                url = (url,)
 
-                    #ajout des occurences des mots clés
-                    cur.execute('INSERT INTO occurence(id_mot_cle,id_site,occurence) VALUES (?,?,?)', infos)
+                cur.execute('SELECT id_page FROM page WHERE url = (?)', (url))
+                try :
+                    #vérification que le page ne soit pas déjà dans la bdd
+                    id_page = cur.fetchone()['id_page']
+                except :
+                    #ajout du page si non présent
+                    cur.execute('INSERT INTO page(url) VALUES (?)',(url))
+                    cur.execute('SELECT id_page FROM page WHERE url = (?)', (url))
+                    id_page = cur.fetchone()['id_page']
 
+                    for i in range (len(text)) :
+                    #ajout des nouveaux mots clés et des occurences des mots clés
+                        if i > 1 :
+                            info_mot_cle = text[i].split(';')
+                            if len(info_mot_cle)>1:
+                                occurence = int(info_mot_cle[1])
+                                mot = (info_mot_cle[0],)
+                                cur.execute('SELECT id_mot_cle FROM mot_cle WHERE mot_cle = ?', mot)
+                                try :
+                                    #vérification que le mot clé n'est pas présent dans la bdd
+                                    id_mot_cle = cur.fetchone()['id_mot_cle']
+                                except :
+                                    #ajout des nouveaux mots cles dans la bdd
+                                    cur.execute('INSERT INTO mot_cle(mot_cle) VALUES (?)', mot)
+                                    cur.execute('SELECT id_mot_cle FROM mot_cle WHERE mot_cle = ?', mot)
+                                    id_mot_cle = cur.fetchone()['id_mot_cle']
+
+                                infos = (id_mot_cle,id_page,occurence)
+
+                                #ajout des occurences des mots clés
+                                cur.execute('INSERT INTO occurence(id_mot_cle,id_page,occurence) VALUES (?,?,?)', infos)
+                            else:
+                                print('what ?  ',info_mot_cle)
 
 
 if __name__ ==  '__main__' :
 
     bdd = bdd_mc()
-    bdd.run(r'C:\Users\Régis\Documents\0 - KIN\Projet Garcin\bdd_mot_cle.bd',r'C:\Users\Régis\Desktop\test.txt')
+    bdd.run(r'C:\Users\alexa\projects\Privacy_Sequence\venv\bdd_mot_cle.bd',r'C:\Users\alexa\projects\Privacy_Sequence\venv\URL\BDD SOUS FORME TXT.txt')
