@@ -13,6 +13,7 @@
   *
   ******************************************************************************
 '''
+import random
 import re
 import requests
 from bs4 import BeautifulSoup
@@ -25,14 +26,18 @@ from langdetect import detect
 class xtr_txt():
     def __init__(self):
 
-        self.ban_word = ['twitter','wordpress','facebook','microsoft','google','privacy','cookies','linkedin','guide','europa','wikipedia']
+        self.ban_word = ['policies','wikipedia','wikimedia','twitter','google','ur','ru','service','wordpress','facebook','microsoft','qwant','privacy','cookies','linkedin','guide','europa','wikipedia']
 
         self.download_folder_c = 'C:\\Users\\alexa\\projects\\Privacy_Sequence\\venv'
         self.root_driver_python = 'C:/Users/alexa/projects/bordron_image_scrap/fox_driver/geckodriver.exe'
         self.endroit = 'C:/Users/alexa/projects/Privacy_Sequence/venv'
-        self.defaut = ['https://www.qwant.com/?q=evolution&t=web']
+        self.defaut = ['https://www.python.org/']
 
     def ban_check(self,url,list_url):        # Rejet des urls trouvées sur les pages visitées
+        self.ban_word = ['policies', 'wikipedia', 'wikimedia', 'twitter', 'google', 'ur', 'ru', 'service', 'wordpress',
+                         'facebook', 'microsoft', 'qwant', 'privacy', 'cookies', 'linkedin', 'guide', 'europa',
+                         'wikipedia']
+
         for word in self.ban_word:
             if word in url:         #Si l'url contient un mot clé impertinent
                 return True
@@ -43,7 +48,8 @@ class xtr_txt():
         elif len(url)>50:           #Si l'url est trop longue
             return True
         for URL in list_url:        #Si l'url est déjà dans la liste des sites à visiter
-           if URL == url:
+            if URL == url:
+                print('cet url est déjà dans la liste')
                 return True
 
         return False
@@ -72,7 +78,7 @@ class xtr_txt():
 
         while len(liste_URL_trouvees) > 0: # tant qu'il y a des sites à visiter
 
-            URL = liste_URL_trouvees.pop(0)
+            URL = liste_URL_trouvees.pop(random.randrange(0, len(liste_URL_trouvees)))
             URL_list_set = set(liste_URL_visites)
 
 
@@ -81,15 +87,17 @@ class xtr_txt():
                 print('nouveau lien', URL)
                 if not(URL in liste_URL_visites):
                     list_link, txt_tags, driver = self.extraction_ref(driver, URL)
-                    self.save(URL,txt_tags)
-                    Liste_nouveaux_URL_visite = Liste_nouveaux_URL_visite + [URL]
-                    liste_URL_visites = liste_URL_visites + [URL]
+                    if len(txt_tags)>2:
+                        self.save(URL,txt_tags)
+                        Liste_nouveaux_URL_visite = Liste_nouveaux_URL_visite + [URL]
+                        liste_URL_visites = liste_URL_visites + [URL]
 
                 # On rajoute à la liste des sites à visiter la listes des sites trouvés sur l'URL que l'on vient
                 # d'analyser
                 for link in list_link:
                     if not(self.ban_check(link,liste_URL_trouvees)):
-                        liste_URL_trouvees = liste_URL_trouvees + [link]
+                         if not(self.ban_check(link,liste_URL_visites)):
+                             liste_URL_trouvees = liste_URL_trouvees + [link]
 
             else :
                 print('URL incompatible : ',URL)
@@ -141,7 +149,7 @@ class xtr_txt():
         doc.close()
 
     def save_visited(self,liste_nouveaux_URL):
-        doc = open(self.endroit + '/' + 'sites_web_trouves.txt', 'a')
+        doc = open(self.endroit + '/' + 'sites_web_visites.txt', 'a')
         for URL in liste_nouveaux_URL:
             doc.write(str(str(URL)+'\n'))
         doc.close()
@@ -159,19 +167,25 @@ class xtr_txt():
         return liste_URL_visites
 
     def extraction_ref(self,driver, URL):
-
+        txts = []
         try :
             driver.get(URL)
             print('URL accepetée')
             time.sleep(3)
             soup = BeautifulSoup(driver.page_source, 'html.parser')
             link_tags = soup.find_all('a', href=True)
+
             link_list = []
             for link_tag in link_tags:
                 link_list = link_list + [link_tag['href']]
 
             print('tag_ref fait')
             txt_tags = soup.findAll('p')
+            txt_tags = txt_tags + soup.findAll('h1')
+            txt_tags = txt_tags + soup.findAll('h2')
+            txt_tags = txt_tags + soup.findAll('h3')
+            txt_tags = txt_tags + soup.findAll('span')
+
             txts = []
 
             blacklist = [
@@ -180,27 +194,34 @@ class xtr_txt():
                 'header',
                 'html',
                 'meta',
-                'head',
                 'input',
                 'script',
                 # there may be more elements you don't want, such as "style", etc.
             ]
 
             for txt in txt_tags:
-                print('text : ',txt.getText())
-                if txt.parent.name not in blacklist:
-                    if detect(txt.getText())=='en' or detect(txt.getText())=='fr':
-                        txts = txts +['{} '.format(txt.getText())]
-                    else:
-                        print('text rejetté: ',txt.getText())
+                print('text trouvé : ',txt.getText())
+                try:
+                     if txt.parent.name not in blacklist:
+
+                        if detect(txt.getText())=='en' or detect(txt.getText())=='fr':
+                             txts = txts +['{} '.format(txt.getText())]
+                        else:
+                            print('text rejetté: ',txt.getText())
+                except:
+                    print('ça a crache à cause de ça : ',txt)
 
             print('txt fait ')
             if len(txts) == 0:
                 print('pas de texte dans le lien')
+
+            print('ceci est envoyé', txts)
+
             return link_list, txts, driver
         except :
             print('URL non valide : ',URL)
-            return [], [], driver
+            print("rien n'est envoyé !")
+            return [],  txts, driver
 
     def recherche(self,mot,driver):
         print(mot)
